@@ -19,32 +19,63 @@ function Loader() {
 }
 
 function CameraRig() {
-  const { camera } = useThree();
+  const { camera, size } = useThree();
   const controlsRef = useRef<any>(null);
   const cameraFraming = useCharacterStore((state) => state.cameraFraming);
   const isPortrait = cameraFraming === 'portrait';
 
-  const targetPos = isPortrait ? CHARACTER_CONFIG.portraitCameraPosition : CHARACTER_CONFIG.cameraPosition;
-  const targetCenter = isPortrait ? CHARACTER_CONFIG.portraitTarget : CHARACTER_CONFIG.cameraTarget;
+  // Responsive mobile portrait camera framing compensation
+  const aspect = size.width / Math.max(size.height, 1);
+  const isMobilePortrait = aspect < 0.75;
+
+  let targetPos: [number, number, number];
+  let targetCenter: [number, number, number];
+  let targetFov: number;
+
+  if (isPortrait) {
+    const mobileZOffset = isMobilePortrait ? Math.min(0.35, (0.75 - aspect) * 0.7) : 0;
+    targetPos = [
+      CHARACTER_CONFIG.portraitCameraPosition[0],
+      CHARACTER_CONFIG.portraitCameraPosition[1],
+      CHARACTER_CONFIG.portraitCameraPosition[2] + mobileZOffset,
+    ];
+    targetCenter = CHARACTER_CONFIG.portraitTarget;
+    targetFov = isMobilePortrait ? 34 : 32;
+  } else {
+    // Full-body mode: ensure head-to-pedestal is visible on narrow portrait screens
+    const mobileZOffset = isMobilePortrait ? Math.min(0.85, (0.75 - aspect) * 1.5) : 0;
+    const mobileYTargetOffset = isMobilePortrait ? 0.06 : 0;
+    targetPos = [
+      CHARACTER_CONFIG.cameraPosition[0],
+      CHARACTER_CONFIG.cameraPosition[1] + (isMobilePortrait ? 0.03 : 0),
+      CHARACTER_CONFIG.cameraPosition[2] + mobileZOffset,
+    ];
+    targetCenter = [
+      CHARACTER_CONFIG.cameraTarget[0],
+      CHARACTER_CONFIG.cameraTarget[1] + mobileYTargetOffset,
+      CHARACTER_CONFIG.cameraTarget[2],
+    ];
+    targetFov = isMobilePortrait ? 36 : CHARACTER_CONFIG.cameraFov;
+  }
 
   useEffect(() => {
     camera.position.set(targetPos[0], targetPos[1], targetPos[2]);
     if ('fov' in camera) {
-      (camera as any).fov = isPortrait ? 32 : CHARACTER_CONFIG.cameraFov;
+      (camera as any).fov = targetFov;
       camera.updateProjectionMatrix();
     }
     if (controlsRef.current) {
       controlsRef.current.target.set(targetCenter[0], targetCenter[1], targetCenter[2]);
       controlsRef.current.update();
     }
-  }, [camera, cameraFraming, targetPos, targetCenter, isPortrait]);
+  }, [camera, cameraFraming, targetPos[0], targetPos[1], targetPos[2], targetCenter[0], targetCenter[1], targetCenter[2], targetFov]);
 
   return (
     <OrbitControls
       ref={controlsRef}
       enablePan={false}
       minDistance={0.8}
-      maxDistance={4.5}
+      maxDistance={5.0}
       minAzimuthAngle={-Math.PI / 3.2}
       maxAzimuthAngle={Math.PI / 3.2}
       minPolarAngle={Math.PI / 4}

@@ -1,5 +1,6 @@
 import express from 'express';
 import http from 'http';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
@@ -19,9 +20,72 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const server = http.createServer(app);
-const port = parseInt(process.env.PORT || '3000', 10);
+const port = parseInt(process.env.PORT || '3001', 10);
 
 app.use(express.json());
+
+const isProduction = process.env.NODE_ENV === 'production';
+
+// Parse configured frontend origins from FRONTEND_URL (comma-separated allowed)
+const configuredFrontendOrigins: string[] = [];
+if (process.env.FRONTEND_URL) {
+  process.env.FRONTEND_URL.split(',').forEach((url) => {
+    const trimmed = url.trim().replace(/\/+$/, '');
+    if (trimmed) configuredFrontendOrigins.push(trimmed);
+  });
+}
+
+// Development localhost origins
+const devOrigins: string[] = [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'http://localhost:5173',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:3001',
+  'http://127.0.0.1:5173',
+];
+
+// Production startup check: warn immediately if FRONTEND_URL is not set
+if (isProduction && configuredFrontendOrigins.length === 0) {
+  console.error(
+    'CRITICAL SECURITY WARNING: FRONTEND_URL is not configured in production environment! ' +
+    'Browser WebSocket connections to /live will be rejected until FRONTEND_URL is set in environment variables.'
+  );
+}
+
+function isOriginAllowed(origin?: string): boolean {
+  if (isProduction) {
+    // In production:
+    // 1. FRONTEND_URL MUST be configured
+    if (configuredFrontendOrigins.length === 0) return false;
+    // 2. Reject missing Origin header in production
+    if (!origin) return false;
+    // 3. Reject localhost origins in production; allow only exact configured origins
+    return configuredFrontendOrigins.includes(origin);
+  }
+
+  // In development:
+  if (!origin) return true; // Allow local CLI tools / curl / health probes
+  if (devOrigins.includes(origin)) return true;
+  if (configuredFrontendOrigins.includes(origin)) return true;
+  return false;
+}
+
+// CORS configuration for Vercel frontend origin and local development
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && isOriginAllowed(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  }
+
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(204);
+    return;
+  }
+  next();
+});
 
 // Helper to get a telemetry-compliant Gemini client using the latest server-side secret
 function getGenAIClient(): GoogleGenAI {
@@ -281,8 +345,42 @@ async function fetchWeatherReport(location: string): Promise<Record<string, unkn
   };
 }
 
-// WebSocket server on /live
-const wss = new WebSocketServer({ server, path: '/live' });
+// WebSocket server on /live with origin validation for Vercel + Render architecture
+const wss = new WebSocketServer({
+  server,
+  path: '/live',
+  verifyClient: (info, cb) => {
+    const origin = info.origin;
+
+    if (isProduction) {
+      if (configuredFrontendOrigins.length === 0) {
+        console.warn('[WebSocket] Rejected handshake: FRONTEND_URL is not configured in production.');
+        cb(false, 500, 'Server Misconfigured: FRONTEND_URL is required in production');
+        return;
+      }
+      if (!origin) {
+        console.warn('[WebSocket] Rejected handshake: Missing Origin header in production.');
+        cb(false, 403, 'Missing Origin Header');
+        return;
+      }
+      if (isOriginAllowed(origin)) {
+        cb(true);
+      } else {
+        console.warn(`[WebSocket] Rejected handshake from unauthorized origin in production: ${origin}`);
+        cb(false, 403, 'Unauthorized Origin');
+      }
+      return;
+    }
+
+    // Development environment: allow local origins or tools
+    if (isOriginAllowed(origin)) {
+      cb(true);
+    } else {
+      console.warn(`[WebSocket] Rejected connection from unauthorized dev origin: ${origin}`);
+      cb(false, 403, 'Unauthorized Origin');
+    }
+  },
+});
 
 wss.on('connection', async (clientWs: WebSocket) => {
   console.log('Client connected to Aira Live audio bridge');
@@ -659,14 +757,34 @@ async function bootstrapServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.resolve(__dirname, 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (_req, res) => {
-      res.sendFile(path.resolve(distPath, 'index.html'));
-    });
+    const indexPath = path.resolve(distPath, 'index.html');
+    if (fs.existsSync(indexPath)) {
+      app.use(express.static(distPath));
+      app.get('*', (_req, res) => {
+        res.sendFile(indexPath);
+      });
+    } else {
+      app.get('/', (_req, res) => {
+        res.json({
+          status: 'ok',
+          service: 'AIRA Live Backend Server',
+          liveEndpoint: '/live',
+          healthEndpoint: '/api/health',
+          timestamp: new Date().toISOString(),
+        });
+      });
+    }
   }
 
   server.listen(port, '0.0.0.0', () => {
     console.log(`Aira Live Server running on http://localhost:${port}`);
+    if (isProduction) {
+      if (configuredFrontendOrigins.length > 0) {
+        console.log(`[Security] Production WebSocket Origin Whitelist: ${configuredFrontendOrigins.join(', ')}`);
+      } else {
+        console.error('CRITICAL: FRONTEND_URL is not set! Production WebSocket connections will be blocked.');
+      }
+    }
   });
 }
 

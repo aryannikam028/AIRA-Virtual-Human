@@ -88,46 +88,48 @@ export const HUDHeader: React.FC<HUDHeaderProps> = ({
   ];
 
   return (
-    <header className="relative z-30 w-full max-w-5xl mx-auto px-4 py-3 sm:py-4 flex items-center justify-between">
+    <header className="relative z-30 w-full max-w-5xl mx-auto px-3 sm:px-4 py-2.5 sm:py-4 flex items-center justify-between gap-2">
       {/* Brand logo & personality tag */}
-      <div className="flex items-center gap-3">
-        <div className="relative flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-br from-neutral-800 to-neutral-900 border border-white/10 shadow-lg">
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+        <div className="relative flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-neutral-800 to-neutral-900 border border-white/10 shadow-lg shrink-0">
           <Sparkles className="w-4 h-4 text-pink-400 animate-pulse" />
         </div>
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-lg sm:text-xl font-['Orbitron',sans-serif] font-black tracking-[0.22em] uppercase text-transparent bg-clip-text bg-gradient-to-r from-white via-neutral-100 to-pink-200 drop-shadow-[0_0_12px_rgba(244,114,182,0.4)]">
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <h1 className="text-base sm:text-xl font-['Orbitron',sans-serif] font-black tracking-[0.2em] uppercase text-transparent bg-clip-text bg-gradient-to-r from-white via-neutral-100 to-pink-200 drop-shadow-[0_0_12px_rgba(244,114,182,0.4)]">
               AIRA
             </h1>
-            <span className="text-[9px] sm:text-[10px] font-['Orbitron',sans-serif] font-bold tracking-[0.16em] text-pink-300/90 px-1.5 py-0.5 rounded-md bg-pink-500/15 border border-pink-500/30 shadow-[0_0_8px_rgba(244,114,182,0.25)] select-none">
+            <span className="text-[8.5px] sm:text-[10px] font-['Orbitron',sans-serif] font-bold tracking-[0.16em] text-pink-300/90 px-1 sm:px-1.5 py-0.5 rounded-md bg-pink-500/15 border border-pink-500/30 shadow-[0_0_8px_rgba(244,114,182,0.25)] select-none">
               v1.0
             </span>
           </div>
-          <p className="flex items-center text-[10px] sm:text-[10.5px] font-['Space_Grotesk',sans-serif] tracking-[0.05em] text-neutral-300">
-            <span>Conceptualized &amp; Developed by <strong className="text-pink-300 font-semibold tracking-wide drop-shadow-[0_0_8px_rgba(244,114,182,0.5)]">Aryan Nikam</strong></span>
+          <p className="truncate text-[8.5px] sm:text-[10.5px] font-['Space_Grotesk',sans-serif] tracking-[0.05em] text-neutral-300">
+            <span className="hidden sm:inline">Conceptualized &amp; Developed by </span>
+            <span className="sm:hidden">Dev by </span>
+            <strong className="text-pink-300 font-semibold tracking-wide drop-shadow-[0_0_8px_rgba(244,114,182,0.5)]">Aryan Nikam</strong>
           </p>
         </div>
       </div>
 
-      {/* Center status indicator - Perfectly Centered */}
+      {/* Center status indicator - Perfectly Centered on md, visible in floating status pill on mobile */}
       <div className="hidden md:flex absolute left-1/2 -translate-x-1/2 items-center justify-center pointer-events-none">
         <div className="pointer-events-auto">
           {getStatusBadge()}
         </div>
       </div>
-      <div className="md:hidden flex items-center gap-2">
+      <div className="hidden sm:flex md:hidden items-center gap-2">
         {getStatusBadge()}
       </div>
 
       {/* Right control buttons */}
-      <div className="flex items-center gap-1.5 sm:gap-2">
+      <div className="flex items-center gap-1 sm:gap-2 shrink-0">
         {keywordControl}
 
         {/* Aesthetic picker */}
         <div className="relative group">
           <button
             aria-label="Change aura theme"
-            className="p-2 rounded-xl bg-neutral-900/80 hover:bg-neutral-800 border border-white/10 text-neutral-300 hover:text-white transition-all shadow-sm"
+            className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl bg-neutral-900/80 hover:bg-neutral-800 border border-white/10 text-neutral-300 hover:text-white transition-all shadow-sm active:scale-95"
           >
             <Palette className="w-4 h-4" style={{ color: theme.primaryColor }} />
           </button>
@@ -164,7 +166,7 @@ export const HUDHeader: React.FC<HUDHeaderProps> = ({
         <button
           onClick={onOpenInfo}
           aria-label="About Aira persona and Live architecture"
-          className="p-2 rounded-xl bg-neutral-900/80 hover:bg-neutral-800 border border-white/10 text-neutral-300 hover:text-white transition-all shadow-sm"
+          className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-xl bg-neutral-900/80 hover:bg-neutral-800 border border-white/10 text-neutral-300 hover:text-white transition-all shadow-sm active:scale-95"
         >
           <HelpCircle className="w-4 h-4" />
         </button>

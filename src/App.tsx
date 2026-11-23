@@ -13,7 +13,7 @@ import {
 } from './types/index.ts';
 import { THEMES } from './components/AestheticThemes.ts';
 import { LiveSession } from './services/LiveSession.ts';
-import { AudioStreamer } from './services/AudioStreamer.ts';
+import { AudioStreamer, isMobileDevice } from './services/AudioStreamer.ts';
 import { KeywordRecognizer } from './services/KeywordRecognizer.ts';
 import { AuraOrb } from './components/AuraOrb.tsx';
 import { WaveformVisualizer } from './components/WaveformVisualizer.tsx';
@@ -33,6 +33,7 @@ export default function App() {
   const [connectionState, setConnectionState] = useState<ConnectionState>('disconnected');
   const [aesthetic, setAesthetic] = useState<VisualAesthetic>('cyber-magenta');
   const [isMuted, setIsMuted] = useState<boolean>(false);
+  const [outputVolume, setOutputVolume] = useState<number>(() => isMobileDevice() ? 1.25 : 1.0);
   const [reaction, setReaction] = useState<ReactionData | null>(null);
   const [websiteAction, setWebsiteAction] = useState<WebsiteActionData | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -343,12 +344,64 @@ export default function App() {
   );
 
   const handleToggleMute = useCallback(() => {
-    if (!liveSessionRef.current) return;
-    const streamer = liveSessionRef.current.getAudioStreamer();
+    const streamer = liveSessionRef.current ? liveSessionRef.current.getAudioStreamer() : audioStreamer;
+    if (!streamer) return;
     const newMuted = !streamer.getMuted();
     streamer.setMuted(newMuted);
     setIsMuted(newMuted);
-  }, []);
+    if (!newMuted) {
+      const restoredVol = streamer.getOutputVolumeSetting();
+      setOutputVolume(restoredVol > 0 ? restoredVol : (isMobileDevice() ? 1.25 : 1.0));
+    }
+  }, [audioStreamer]);
+
+  const handleVolumeChange = useCallback((vol: number) => {
+    setOutputVolume(vol);
+    const streamer = liveSessionRef.current ? liveSessionRef.current.getAudioStreamer() : audioStreamer;
+    if (vol === 0) {
+      setIsMuted(true);
+      streamer?.setMuted(true);
+    } else {
+      if (isMuted) {
+        setIsMuted(false);
+        streamer?.setMuted(false);
+      }
+      if (liveSessionRef.current) {
+        liveSessionRef.current.setOutputVolume(vol);
+      } else if (audioStreamer) {
+        audioStreamer.setOutputVolume(vol);
+      }
+    }
+  }, [audioStreamer, isMuted]);
+
+  // Mobile audio autoplay unlock and background/foreground lifecycle resumption
+  useEffect(() => {
+    const resumeAudio = () => {
+      if (liveSessionRef.current) {
+        liveSessionRef.current.resumeAudioContext().catch(() => {});
+      } else if (audioStreamer) {
+        audioStreamer.resumeAudioContext().catch(() => {});
+      }
+    };
+
+    window.addEventListener('touchstart', resumeAudio, { passive: true });
+    window.addEventListener('click', resumeAudio, { passive: true });
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        resumeAudio();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('orientationchange', resumeAudio);
+
+    return () => {
+      window.removeEventListener('touchstart', resumeAudio);
+      window.removeEventListener('click', resumeAudio);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('orientationchange', resumeAudio);
+    };
+  }, [audioStreamer]);
 
   const handleToggleKeywordEnabled = useCallback(() => {
     if (!keywordRecognizerRef.current) return;
@@ -473,53 +526,53 @@ export default function App() {
           )}
         </div>
 
-        {/* Floating Side Status Pill - Stylish, small, and positioned safely on the side */}
-        <div className="pointer-events-auto absolute bottom-14 sm:bottom-16 left-4 sm:left-6 z-30 max-w-[320px] sm:max-w-md select-none animate-in fade-in duration-300">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-neutral-950/90 via-[#160c22]/90 to-neutral-950/90 backdrop-blur-xl border border-pink-400/25 shadow-[0_0_15px_rgba(244,114,182,0.15)]">
+        {/* Floating Side Status Pill - Positioned safely above bottom dock on mobile */}
+        <div className="pointer-events-auto absolute bottom-24 sm:bottom-16 left-3 sm:left-6 z-30 max-w-[calc(100vw-1.5rem)] sm:max-w-md select-none animate-in fade-in duration-300">
+          <div className="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 rounded-full bg-gradient-to-r from-neutral-950/90 via-[#160c22]/90 to-neutral-950/90 backdrop-blur-xl border border-pink-400/25 shadow-[0_0_15px_rgba(244,114,182,0.15)]">
             <span className="relative flex h-1.5 w-1.5 shrink-0 items-center justify-center">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-400 opacity-75" />
               <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-pink-400 shadow-[0_0_6px_#f472b6]" />
             </span>
-            <p className="text-[9px] sm:text-[9.5px] font-['Space_Grotesk',sans-serif] tracking-[0.14em] uppercase text-neutral-300 leading-none whitespace-nowrap">
+            <p className="text-[8.5px] sm:text-[9.5px] font-['Space_Grotesk',sans-serif] tracking-[0.12em] sm:tracking-[0.14em] uppercase text-neutral-300 leading-none truncate">
               {connectionState === 'disconnected' && (
                 <>
                   <span className="text-pink-300 font-['Orbitron',sans-serif] font-bold tracking-[0.18em]">STANDBY</span>
-                  <span className="text-neutral-500 mx-1.5">•</span>
+                  <span className="text-neutral-500 mx-1 sm:mx-1.5">•</span>
                   <span>Say <strong className="text-white font-medium">&ldquo;Aira, wake up&rdquo;</strong> or tap <strong className="text-pink-300 font-semibold">Awaken</strong></span>
                 </>
               )}
               {connectionState === 'connecting' && (
                 <>
                   <span className="text-fuchsia-300 font-['Orbitron',sans-serif] font-bold tracking-[0.18em] animate-pulse">LINKING</span>
-                  <span className="text-neutral-500 mx-1.5">•</span>
+                  <span className="text-neutral-500 mx-1 sm:mx-1.5">•</span>
                   <span>Establishing neural stream...</span>
                 </>
               )}
               {connectionState === 'listening' && (
                 <>
                   <span className="text-emerald-300 font-['Orbitron',sans-serif] font-bold tracking-[0.18em]">LISTENING</span>
-                  <span className="text-neutral-500 mx-1.5">•</span>
+                  <span className="text-neutral-500 mx-1 sm:mx-1.5">•</span>
                   <span>Say &ldquo;Aira, sleep&rdquo; anytime</span>
                 </>
               )}
               {connectionState === 'speaking' && (
                 <>
                   <span className="text-pink-300 font-['Orbitron',sans-serif] font-bold tracking-[0.18em] animate-pulse">AIRA SPEAKING</span>
-                  <span className="text-neutral-500 mx-1.5">•</span>
+                  <span className="text-neutral-500 mx-1 sm:mx-1.5">•</span>
                   <span>Answering</span>
                 </>
               )}
               {connectionState === 'interrupted' && (
                 <>
                   <span className="text-amber-300 font-['Orbitron',sans-serif] font-bold tracking-[0.18em]">INTERRUPTED</span>
-                  <span className="text-neutral-500 mx-1.5">•</span>
+                  <span className="text-neutral-500 mx-1 sm:mx-1.5">•</span>
                   <span>Listening back to you</span>
                 </>
               )}
               {connectionState === 'error' && (
                 <>
                   <span className="text-red-400 font-['Orbitron',sans-serif] font-bold tracking-[0.18em]">OFFLINE</span>
-                  <span className="text-neutral-500 mx-1.5">•</span>
+                  <span className="text-neutral-500 mx-1 sm:mx-1.5">•</span>
                   <span>Tap Retry to reconnect</span>
                 </>
               )}
@@ -528,9 +581,9 @@ export default function App() {
         </div>
 
         {/* Floating Side Action Dock - Positioned on the RIGHT side to leave Aira completely clear */}
-        <div className="pointer-events-auto absolute bottom-14 sm:bottom-16 right-4 sm:right-6 z-30 flex flex-col items-end gap-1.5 select-none animate-in fade-in duration-300">
+        <div className="pointer-events-auto absolute bottom-11 sm:bottom-16 right-3 sm:right-6 z-30 flex flex-col items-end gap-1 select-none animate-in fade-in duration-300">
           {/* Oscilloscope Waveform Visualizer (compact sleek soundwave above the button) */}
-          <div className="w-44 sm:w-56 h-6 sm:h-7 relative flex items-center justify-end pointer-events-none opacity-85">
+          <div className="w-36 sm:w-56 h-5 sm:h-7 relative flex items-center justify-end pointer-events-none opacity-85">
             <WaveformVisualizer
               state={connectionState}
               aesthetic={aesthetic}
@@ -549,19 +602,19 @@ export default function App() {
 
           {/* Muted Warning Indicator */}
           {isMuted && connectionState !== 'disconnected' && (
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/20 border border-red-500/40 text-red-200 text-[10px] font-['Space_Grotesk',sans-serif] font-bold uppercase tracking-wider backdrop-blur-md shadow-lg">
-              <VolumeX className="w-3.5 h-3.5" />
-              <span>Audio output muted</span>
+            <div className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full bg-red-500/20 border border-red-500/40 text-red-200 text-[9px] sm:text-[10px] font-['Space_Grotesk',sans-serif] font-bold uppercase tracking-wider backdrop-blur-md shadow-lg">
+              <VolumeX className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+              <span>Audio muted</span>
             </div>
           )}
         </div>
 
         {/* Bottom Minimal HUD Telemetry & Status bar */}
         <div className="pointer-events-auto w-full">
-          <footer className="relative z-20 w-full max-w-5xl mx-auto px-4 py-2 flex flex-wrap items-center justify-between gap-2.5 text-[10.5px] font-['Space_Grotesk',sans-serif] tracking-[0.14em] uppercase text-neutral-300 bg-neutral-950/40 backdrop-blur-md border-t border-white/5 sm:rounded-t-2xl">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-pink-500 animate-pulse shadow-[0_0_8px_#ec4899]" />
-              <span className="font-semibold text-neutral-200">Gemini Live Audio</span>
+          <footer className="relative z-20 w-full max-w-5xl mx-auto px-3 sm:px-4 py-1.5 sm:py-2 flex items-center justify-between gap-1.5 sm:gap-2.5 text-[9px] sm:text-[10.5px] font-['Space_Grotesk',sans-serif] tracking-[0.12em] sm:tracking-[0.14em] uppercase text-neutral-300 bg-neutral-950/70 backdrop-blur-md border-t border-white/5 sm:rounded-t-2xl pb-[max(0.375rem,env(safe-area-inset-bottom,0px))]">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-pink-500 animate-pulse shadow-[0_0_8px_#ec4899]" />
+              <span className="font-semibold text-neutral-200 hidden xs:inline">Gemini Live</span>
             </div>
 
             {/* Live Accurate Chronometer HUD */}
@@ -569,17 +622,17 @@ export default function App() {
               <DateTimeHUD />
             </div>
 
-            <div className="flex items-center gap-2.5 ml-auto sm:ml-0">
+            <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
               {/* Full-Body / Portrait Camera Angle Toggle */}
               <button
                 onClick={() => {
                   const current = useCharacterStore.getState().cameraFraming;
                   useCharacterStore.getState().setCameraFraming(current === 'full-body' ? 'portrait' : 'full-body');
                 }}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-neutral-300 hover:text-pink-300 transition-all font-semibold tracking-wider text-[10px]"
+                className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-neutral-300 hover:text-pink-300 transition-all font-semibold tracking-wider text-[9px] sm:text-[10px] min-h-[30px]"
                 title="Toggle between Full-Body 3D view and Portrait camera view"
               >
-                <Eye className="w-3 h-3 text-pink-400" />
+                <Eye className="w-3 h-3 text-pink-400 shrink-0" />
                 <span>{useCharacterStore((s) => s.cameraFraming) === 'full-body' ? 'Full Body' : 'Portrait'}</span>
               </button>
 
@@ -592,10 +645,14 @@ export default function App() {
         </div>
       </div>
 
-      {/* Information Modal */}
+      {/* Information Modal with Output Volume Slider */}
       <PersonaDrawer
         isOpen={isInfoOpen}
         onClose={() => setIsInfoOpen(false)}
+        outputVolume={outputVolume}
+        onVolumeChange={handleVolumeChange}
+        isMuted={isMuted}
+        onToggleMute={handleToggleMute}
       />
     </div>
   );

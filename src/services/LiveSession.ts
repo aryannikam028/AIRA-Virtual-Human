@@ -72,6 +72,18 @@ export class LiveSession {
     return this.audioStreamer;
   }
 
+  public setOutputVolume(volume: number): void {
+    this.audioStreamer.setOutputVolume(volume);
+  }
+
+  public getOutputVolume(): number {
+    return this.audioStreamer.getOutputVolumeSetting();
+  }
+
+  public async resumeAudioContext(): Promise<void> {
+    await this.audioStreamer.resumeAudioContext();
+  }
+
   public getState(): ConnectionState {
     return this.state;
   }
@@ -190,16 +202,17 @@ export class LiveSession {
       // while preserving standard relative host connection for localhost development.
       const envWsUrl = import.meta.env.VITE_WS_URL;
       let wsUrl: string;
+
       if (envWsUrl && typeof envWsUrl === 'string' && envWsUrl.trim().length > 0) {
-        const cleanBase = envWsUrl.trim().replace(/\/+$/, '');
-        const wsBase = cleanBase.startsWith('http://')
-          ? cleanBase.replace('http://', 'ws://')
-          : cleanBase.startsWith('https://')
-          ? cleanBase.replace('https://', 'wss://')
-          : cleanBase.startsWith('ws://') || cleanBase.startsWith('wss://')
-          ? cleanBase
-          : `wss://${cleanBase}`;
-        wsUrl = `${wsBase}/live`;
+        let clean = envWsUrl.trim().replace(/\/+$/, '');
+        if (clean.startsWith('https://')) {
+          clean = clean.replace('https://', 'wss://');
+        } else if (clean.startsWith('http://')) {
+          clean = clean.replace('http://', 'ws://');
+        } else if (!clean.startsWith('wss://') && !clean.startsWith('ws://')) {
+          clean = `wss://${clean}`;
+        }
+        wsUrl = clean.endsWith('/live') ? clean : `${clean}/live`;
       } else {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         wsUrl = `${protocol}//${window.location.host}/live`;

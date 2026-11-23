@@ -10,6 +10,18 @@ export interface MicRecordingStatus {
   fallbackReason?: string;
 }
 
+/**
+ * Detects whether the current client is a mobile device or phone.
+ * Combines touch capability, max viewport width, and userAgent inspection.
+ */
+export function isMobileDevice(): boolean {
+  if (typeof window === 'undefined') return false;
+  const hasTouch = 'maxTouchPoints' in navigator && navigator.maxTouchPoints > 0;
+  const isSmallScreen = typeof window.matchMedia === 'function' ? window.matchMedia('(max-width: 768px)').matches : false;
+  const mobileUAPattern = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
+  return (hasTouch && isSmallScreen) || mobileUAPattern.test(navigator.userAgent);
+}
+
 export class AudioStreamer {
   // Input (Mic Capture -> 16kHz PCM16)
   private inputAudioContext: AudioContext | null = null;
@@ -20,10 +32,13 @@ export class AudioStreamer {
   private isVirtualMic = false;
   private isMicGated = false;
 
-  // Output (Playback -> 24kHz PCM16)
+  // Output (Playback -> 24kHz PCM16 with safe output volume control & soft-knee compressor)
   private outputAudioContext: AudioContext | null = null;
   private outputAnalyser: AnalyserNode | null = null;
   private outputGainNode: GainNode | null = null;
+  private outputCompressor: DynamicsCompressorNode | null = null;
+  // Desktop defaults strictly to 1.0 (original volume). Mobile devices default to 1.25 (+2dB) for micro-speaker clarity.
+  private outputVolume = isMobileDevice() ? 1.25 : 1.0;
   private nextStartTime = 0;
   private activeSources: AudioBufferSourceNode[] = [];
   private isSpeaking = false;
@@ -42,21 +57,42 @@ export class AudioStreamer {
   }
 
   /**
-   * Initializes or gets the 24kHz output audio context for playback
+   * Initializes or gets the output audio context for playback.
+   * Uses a safe audio graph: AnalyserNode -> GainNode -> DynamicsCompressorNode -> destination.
+   * The DynamicsCompressorNode acts as a transparent soft limiter, ensuring loud speech peaks
+   * do not clip or distort on mobile speakers.
    */
   public getOrCreateOutputContext(): AudioContext {
     if (!this.outputAudioContext || this.outputAudioContext.state === 'closed') {
       const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      this.outputAudioContext = new AudioCtx({ sampleRate: 24000 });
+      try {
+        this.outputAudioContext = new AudioCtx({ sampleRate: 24000 });
+      } catch {
+        // Fallback for mobile devices that strictly enforce native hardware sample rates (44.1k/48k)
+        this.outputAudioContext = new AudioCtx();
+      }
       this.outputAnalyser = this.outputAudioContext.createAnalyser();
       this.outputAnalyser.fftSize = 256;
       this.outputAnalyser.smoothingTimeConstant = 0.75;
 
+      // Output Gain Node for user volume control & safe mobile loudness boost
       this.outputGainNode = this.outputAudioContext.createGain();
-      this.outputGainNode.gain.value = this.isMuted ? 0 : 1;
+      const initialGain = this.isMuted ? 0 : this.outputVolume;
+      this.outputGainNode.gain.setValueAtTime(initialGain, this.outputAudioContext.currentTime);
 
+      // Dynamics Compressor configured as a transparent soft-knee peak compressor/limiter
+      // Attenuates excessive peaks without harsh digital clipping; not a guaranteed zero-lookahead brickwall
+      this.outputCompressor = this.outputAudioContext.createDynamicsCompressor();
+      this.outputCompressor.threshold.setValueAtTime(-3.5, this.outputAudioContext.currentTime);
+      this.outputCompressor.knee.setValueAtTime(6.0, this.outputAudioContext.currentTime);
+      this.outputCompressor.ratio.setValueAtTime(12.0, this.outputAudioContext.currentTime);
+      this.outputCompressor.attack.setValueAtTime(0.003, this.outputAudioContext.currentTime);
+      this.outputCompressor.release.setValueAtTime(0.15, this.outputAudioContext.currentTime);
+
+      // Signal chain: source -> outputAnalyser -> outputGainNode -> outputCompressor -> destination
       this.outputAnalyser.connect(this.outputGainNode);
-      this.outputGainNode.connect(this.outputAudioContext.destination);
+      this.outputGainNode.connect(this.outputCompressor);
+      this.outputCompressor.connect(this.outputAudioContext.destination);
     }
     if (this.outputAudioContext.state === 'suspended') {
       this.outputAudioContext.resume().catch(() => {});
@@ -276,13 +312,58 @@ export class AudioStreamer {
    */
   public setMuted(muted: boolean): void {
     this.isMuted = muted;
-    if (this.outputGainNode) {
-      this.outputGainNode.gain.setValueAtTime(muted ? 0 : 1, this.outputAudioContext?.currentTime || 0);
+    if (this.outputGainNode && this.outputAudioContext) {
+      const target = muted ? 0 : this.outputVolume;
+      this.outputGainNode.gain.setValueAtTime(target, this.outputAudioContext.currentTime);
     }
   }
 
   public getMuted(): boolean {
     return this.isMuted;
+  }
+
+  /**
+   * Sets the output playback volume (0.0 to 1.5).
+   * Operates strictly on the output GainNode, never affecting microphone input capture.
+   * Capped at 1.5 (150% / +3.5dB) to prevent transient overshoot and preserve natural voice dynamics.
+   */
+  public setOutputVolume(volume: number): void {
+    const clamped = Math.max(0, Math.min(1.5, volume));
+    if (clamped > 0) {
+      this.outputVolume = clamped;
+    }
+    if (this.outputGainNode && this.outputAudioContext) {
+      const targetGain = (this.isMuted || clamped === 0) ? 0 : clamped;
+      this.outputGainNode.gain.setValueAtTime(targetGain, this.outputAudioContext.currentTime);
+    }
+  }
+
+  /**
+   * Returns current master output volume setting (default: 1.0 desktop, 1.25 mobile)
+   */
+  public getOutputVolumeSetting(): number {
+    return this.outputVolume;
+  }
+
+  /**
+   * Explicitly resumes output and input AudioContexts after mobile user touch gesture
+   * or background-to-foreground transition.
+   */
+  public async resumeAudioContext(): Promise<void> {
+    if (this.outputAudioContext && this.outputAudioContext.state === 'suspended') {
+      try {
+        await this.outputAudioContext.resume();
+      } catch {
+        // Handled gracefully
+      }
+    }
+    if (this.inputAudioContext && this.inputAudioContext.state === 'suspended') {
+      try {
+        await this.inputAudioContext.resume();
+      } catch {
+        // Handled gracefully
+      }
+    }
   }
 
   /**

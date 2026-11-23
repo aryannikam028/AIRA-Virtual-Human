@@ -8,7 +8,7 @@ dist/
 coverage/
 
 # Vercel deployment artifacts
-.vercel
+.vercel/
 
 # Environment variables & secrets (CRITICAL: never commit actual secrets)
 .env
@@ -18,6 +18,9 @@ coverage/
 .env.test.local
 .env.production.local
 !.env.example
+
+# Next.js
+.next/
 
 # IDE and Editor configs
 .vscode/
@@ -31,10 +34,15 @@ Thumbs.db
 
 # Logs
 *.log
+logs/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+
+# Temporary files
+*.tmp
+*.temp
 
 # Gemini / Scratch runtime artifacts
 .gemini/

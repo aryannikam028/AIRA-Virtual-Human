@@ -64,32 +64,6 @@ html, body, #root {
   font-family: 'Space Grotesk', system-ui, sans-serif;
 }
 
-/* Mobile Safe Area & Touch UX Utilities */
-.safe-top {
-  padding-top: max(env(safe-area-inset-top, 0px), 0.5rem);
-}
-.safe-bottom {
-  padding-bottom: max(env(safe-area-inset-bottom, 0px), 0.5rem);
-}
-.safe-left {
-  padding-left: max(env(safe-area-inset-left, 0px), 0.75rem);
-}
-.safe-right {
-  padding-right: max(env(safe-area-inset-right, 0px), 0.75rem);
-}
-
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-button, input, select, textarea {
-  touch-action: manipulation;
-}
-
 @keyframes aira-spin {
   to {
     transform: rotate(360deg);

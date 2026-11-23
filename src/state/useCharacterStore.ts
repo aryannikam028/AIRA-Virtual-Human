@@ -66,8 +66,6 @@ interface CharacterStore {
   speechRate: number;
   voicePitch: number;
   isMicActive: boolean;
-  volume: number;
-  isChatOpen: boolean;
 
   // Chat & History
   messages: ChatMessage[];
@@ -89,8 +87,6 @@ interface CharacterStore {
   setSpeechRate: (rate: number) => void;
   setVoicePitch: (pitch: number) => void;
   setMicActive: (active: boolean) => void;
-  setVolume: (volume: number) => void;
-  setIsChatOpen: (isChatOpen: boolean) => void;
   setIsSearching: (searching: boolean) => void;
   setErrorMessage: (msg: string | null) => void;
   
@@ -115,10 +111,6 @@ export const useCharacterStore = create<CharacterStore>((set) => ({
   speechRate: 1.05,
   voicePitch: 1.28,
   isMicActive: false,
-  volume: typeof window !== 'undefined' && localStorage.getItem('aira_voice_volume')
-    ? Math.max(0, Math.min(2.0, parseFloat(localStorage.getItem('aira_voice_volume') || '1.0')))
-    : 1.0,
-  isChatOpen: false,
   messages: [
     {
       id: 'welcome_1',
@@ -170,8 +162,6 @@ export const useCharacterStore = create<CharacterStore>((set) => ({
   setSpeechRate: (speechRate) => set({ speechRate }),
   setVoicePitch: (voicePitch) => set({ voicePitch }),
   setMicActive: (isMicActive) => set({ isMicActive }),
-  setVolume: (volume) => set({ volume }),
-  setIsChatOpen: (isChatOpen) => set({ isChatOpen }),
   setIsSearching: (isSearching) => set({ isSearching }),
   setErrorMessage: (errorMessage) => set({ errorMessage }),
 

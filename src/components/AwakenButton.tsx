@@ -38,7 +38,7 @@ export const AwakenButton: React.FC<AwakenButtonProps> = ({
       <button
         onClick={onToggleConnection}
         aria-label={isConnected ? 'End session' : 'Awaken Aira'}
-        className={`group relative flex items-center gap-2.5 sm:gap-3 px-4 sm:px-6 py-2.5 sm:py-3 rounded-full overflow-hidden transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-pink-400/50 active:scale-[0.96] hover:-translate-y-0.5 shadow-2xl backdrop-blur-2xl touch-manipulation select-none ${
+        className={`group relative flex items-center gap-3 px-5 sm:px-6 py-2.5 sm:py-3 rounded-full overflow-hidden transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-pink-400/50 active:scale-[0.97] hover:-translate-y-0.5 shadow-2xl backdrop-blur-2xl ${
           isConnected
             ? 'bg-gradient-to-r from-[#140b20]/95 via-[#1d102e]/95 to-[#12091c]/95 border border-pink-400/60 shadow-[0_0_30px_rgba(244,114,182,0.45)]'
             : 'bg-gradient-to-r from-[#120a1b]/95 via-[#1c0f2a]/95 to-[#120a1b]/95 hover:from-[#190d26] hover:via-[#241338] hover:to-[#190d26] border border-pink-400/40 hover:border-pink-300 shadow-[0_0_24px_rgba(244,114,182,0.3)]'

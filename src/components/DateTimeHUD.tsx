@@ -36,15 +36,15 @@ export const DateTimeHUD: React.FC = () => {
       title="Click to toggle 12h/24h time format"
       className="cursor-pointer group flex items-center gap-2 px-3 py-1 rounded-full bg-neutral-900/90 hover:bg-neutral-800/90 border border-white/10 hover:border-pink-500/40 text-[9.5px] sm:text-[10px] font-['Space_Grotesk',sans-serif] tracking-[0.12em] text-neutral-300 transition-all shadow-sm select-none"
     >
-      {/* Date indicator */}
-      <div className="flex items-center gap-1.5 text-neutral-300 group-hover:text-pink-300 transition-colors">
+      {/* Date indicator (Desktop / Tablet) */}
+      <div className="hidden sm:flex items-center gap-1.5 text-neutral-300 group-hover:text-pink-300 transition-colors">
         <Calendar className="w-3.5 h-3.5 text-pink-400" />
         <span className="font-['Space_Grotesk',sans-serif] font-medium tracking-wider">
           {formattedDate}
         </span>
       </div>
 
-      <span className="text-neutral-600">•</span>
+      <span className="hidden sm:inline text-neutral-600">•</span>
 
       {/* Live Time indicator */}
       <div className="flex items-center gap-1.5 text-neutral-200">

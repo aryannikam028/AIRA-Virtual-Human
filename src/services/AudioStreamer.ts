@@ -23,11 +23,14 @@ export class AudioStreamer {
   // Output (Playback -> 24kHz PCM16)
   private outputAudioContext: AudioContext | null = null;
   private outputAnalyser: AnalyserNode | null = null;
+  private outputCompressor: DynamicsCompressorNode | null = null;
   private outputGainNode: GainNode | null = null;
   private nextStartTime = 0;
   private activeSources: AudioBufferSourceNode[] = [];
   private isSpeaking = false;
   private isMuted = false;
+  private volume = 1.0;
+  private isMobile = false;
 
   // Callbacks
   private onSpeakingChange?: (isSpeaking: boolean) => void;
@@ -39,23 +42,79 @@ export class AudioStreamer {
   }) {
     this.onSpeakingChange = callbacks?.onSpeakingChange;
     this.onUserSpeakingChange = callbacks?.onUserSpeakingChange;
+
+    if (typeof window !== 'undefined') {
+      this.isMobile =
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+        'ontouchstart' in window ||
+        navigator.maxTouchPoints > 0;
+
+      try {
+        const savedVol = localStorage.getItem('aira_voice_volume');
+        if (savedVol !== null) {
+          const parsed = parseFloat(savedVol);
+          if (!isNaN(parsed) && parsed >= 0 && parsed <= 2.0) {
+            this.volume = parsed;
+          }
+        }
+      } catch {
+        // Ignore localStorage errors
+      }
+    }
   }
 
   /**
-   * Initializes or gets the 24kHz output audio context for playback
+   * Applies the calculated gain factoring in user volume, mute state, and mobile acoustics
+   */
+  private applyEffectiveGain(): void {
+    if (!this.outputGainNode || !this.outputAudioContext) return;
+    // On mobile phone speakers in voice/communication audio routes, apply a clean 1.35x gain factor
+    // protected by the broadcast dynamics compressor to prevent clipping while ensuring strong audibility.
+    const mobileBoostFactor = this.isMobile ? 1.35 : 1.0;
+    const targetGain = this.isMuted ? 0 : Math.max(0, Math.min(2.0, this.volume * mobileBoostFactor));
+    const t = this.outputAudioContext.currentTime;
+    try {
+      this.outputGainNode.gain.cancelScheduledValues(t);
+      this.outputGainNode.gain.setTargetAtTime(targetGain, t, 0.015);
+    } catch {
+      this.outputGainNode.gain.value = targetGain;
+    }
+  }
+
+  /**
+   * Initializes or gets the output audio context with mobile broadcast compression
    */
   public getOrCreateOutputContext(): AudioContext {
     if (!this.outputAudioContext || this.outputAudioContext.state === 'closed') {
-      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      this.outputAudioContext = new AudioCtx({ sampleRate: 24000 });
+      const AudioCtx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+
+      // Try sampleRate: 24000; gracefully fall back to native device rate if unsupported (e.g. iOS Safari)
+      try {
+        this.outputAudioContext = new AudioCtx({ sampleRate: 24000 });
+      } catch {
+        this.outputAudioContext = new AudioCtx();
+      }
+
       this.outputAnalyser = this.outputAudioContext.createAnalyser();
       this.outputAnalyser.fftSize = 256;
       this.outputAnalyser.smoothingTimeConstant = 0.75;
 
-      this.outputGainNode = this.outputAudioContext.createGain();
-      this.outputGainNode.gain.value = this.isMuted ? 0 : 1;
+      // Professional vocal dynamics compressor tailored for clear phone speaker voice reproduction
+      this.outputCompressor = this.outputAudioContext.createDynamicsCompressor();
+      this.outputCompressor.threshold.setValueAtTime(-20, 0); // Gentle compression on peaks
+      this.outputCompressor.knee.setValueAtTime(16, 0);       // Smooth transition
+      this.outputCompressor.ratio.setValueAtTime(3.5, 0);     // 3.5:1 vocal clarity standard
+      this.outputCompressor.attack.setValueAtTime(0.003, 0);  // 3ms fast response
+      this.outputCompressor.release.setValueAtTime(0.18, 0);  // 180ms musical release
 
-      this.outputAnalyser.connect(this.outputGainNode);
+      this.outputGainNode = this.outputAudioContext.createGain();
+      this.applyEffectiveGain();
+
+      // Audio chain: source -> outputAnalyser -> outputCompressor -> outputGainNode -> destination
+      this.outputAnalyser.connect(this.outputCompressor);
+      this.outputCompressor.connect(this.outputGainNode);
       this.outputGainNode.connect(this.outputAudioContext.destination);
     }
     if (this.outputAudioContext.state === 'suspended') {
@@ -118,7 +177,12 @@ export class AudioStreamer {
 
       source.connect(this.inputAnalyser);
       this.inputAnalyser.connect(this.scriptProcessor);
-      this.scriptProcessor.connect(this.inputAudioContext.destination);
+      // Route through a zero-gain node before destination to prevent microphone audio
+      // from playing back through mobile speakers and triggering iOS audio ducking/echo reduction.
+      const muteMonitorNode = this.inputAudioContext.createGain();
+      muteMonitorNode.gain.value = 0;
+      this.scriptProcessor.connect(muteMonitorNode);
+      muteMonitorNode.connect(this.inputAudioContext.destination);
 
       const sourceSampleRate = this.inputAudioContext.sampleRate;
 
@@ -222,12 +286,19 @@ export class AudioStreamer {
     }
 
     const currentTime = ctx.currentTime;
-    // Gapless scheduling
+    // Gapless scheduling with lag-drift protection for mobile backgrounding
+    if (this.nextStartTime < currentTime - 0.25) {
+      this.nextStartTime = currentTime;
+    }
     const startTime = Math.max(currentTime, this.nextStartTime);
-    source.start(startTime);
-    this.nextStartTime = startTime + audioBuffer.duration;
-
-    this.activeSources.push(source);
+    try {
+      source.start(startTime);
+      this.nextStartTime = startTime + audioBuffer.duration;
+      this.activeSources.push(source);
+    } catch (e) {
+      console.warn('AudioBufferSource start failed:', e);
+      return;
+    }
 
     if (!this.isSpeaking) {
       this.isSpeaking = true;
@@ -276,13 +347,45 @@ export class AudioStreamer {
    */
   public setMuted(muted: boolean): void {
     this.isMuted = muted;
-    if (this.outputGainNode) {
-      this.outputGainNode.gain.setValueAtTime(muted ? 0 : 1, this.outputAudioContext?.currentTime || 0);
-    }
+    this.applyEffectiveGain();
   }
 
   public getMuted(): boolean {
     return this.isMuted;
+  }
+
+  /**
+   * Sets the playback volume level (0.0 to 1.5/2.0)
+   */
+  public setVolume(vol: number): void {
+    this.volume = Math.max(0, Math.min(2.0, vol));
+    try {
+      localStorage.setItem('aira_voice_volume', String(this.volume));
+    } catch {}
+    this.applyEffectiveGain();
+  }
+
+  /**
+   * Gets the current user volume setting
+   */
+  public getVolume(): number {
+    return this.volume;
+  }
+
+  /**
+   * Resumes suspended AudioContext (required on mobile after user interaction or tab switch)
+   */
+  public async resumeOutputContext(): Promise<void> {
+    if (this.outputAudioContext && this.outputAudioContext.state === 'suspended') {
+      try {
+        await this.outputAudioContext.resume();
+      } catch {}
+    }
+    if (this.inputAudioContext && this.inputAudioContext.state === 'suspended') {
+      try {
+        await this.inputAudioContext.resume();
+      } catch {}
+    }
   }
 
   /**

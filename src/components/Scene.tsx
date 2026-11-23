@@ -19,32 +19,50 @@ function Loader() {
 }
 
 function CameraRig() {
-  const { camera } = useThree();
+  const { camera, size } = useThree();
   const controlsRef = useRef<any>(null);
   const cameraFraming = useCharacterStore((state) => state.cameraFraming);
   const isPortrait = cameraFraming === 'portrait';
 
-  const targetPos = isPortrait ? CHARACTER_CONFIG.portraitCameraPosition : CHARACTER_CONFIG.cameraPosition;
-  const targetCenter = isPortrait ? CHARACTER_CONFIG.portraitTarget : CHARACTER_CONFIG.cameraTarget;
+  // Responsive detection for mobile screens (portrait orientation or width < 768px)
+  const isNarrowMobile = size.width < 768 || size.width < size.height;
+
+  // Responsive camera framing:
+  // - On desktop: exact original coordinates preserved.
+  // - On mobile portrait: distance and vertical center adapt gracefully so the complete avatar
+  //   is framed without covering header or bottom touch controls.
+  let targetPos: [number, number, number];
+  let targetCenter: [number, number, number];
+  let targetFov: number;
+
+  if (isPortrait) {
+    targetPos = isNarrowMobile ? [0, 0.54, 1.75] : CHARACTER_CONFIG.portraitCameraPosition;
+    targetCenter = isNarrowMobile ? [0, 0.52, 0] : CHARACTER_CONFIG.portraitTarget;
+    targetFov = isNarrowMobile ? 34 : 32;
+  } else {
+    targetPos = isNarrowMobile ? [0, 0.05, 4.35] : CHARACTER_CONFIG.cameraPosition;
+    targetCenter = isNarrowMobile ? [0, -0.04, 0] : CHARACTER_CONFIG.cameraTarget;
+    targetFov = isNarrowMobile ? 38 : CHARACTER_CONFIG.cameraFov;
+  }
 
   useEffect(() => {
     camera.position.set(targetPos[0], targetPos[1], targetPos[2]);
     if ('fov' in camera) {
-      (camera as any).fov = isPortrait ? 32 : CHARACTER_CONFIG.cameraFov;
+      (camera as any).fov = targetFov;
       camera.updateProjectionMatrix();
     }
     if (controlsRef.current) {
       controlsRef.current.target.set(targetCenter[0], targetCenter[1], targetCenter[2]);
       controlsRef.current.update();
     }
-  }, [camera, cameraFraming, targetPos, targetCenter, isPortrait]);
+  }, [camera, cameraFraming, isNarrowMobile, targetPos, targetCenter, targetFov]);
 
   return (
     <OrbitControls
       ref={controlsRef}
       enablePan={false}
       minDistance={0.8}
-      maxDistance={4.5}
+      maxDistance={isNarrowMobile ? 5.5 : 4.5}
       minAzimuthAngle={-Math.PI / 3.2}
       maxAzimuthAngle={Math.PI / 3.2}
       minPolarAngle={Math.PI / 4}
@@ -60,7 +78,9 @@ export const Scene: React.FC = () => {
   const animationQuality = useCharacterStore((state) => state.animationQuality);
   const cameraFraming = useCharacterStore((state) => state.cameraFraming);
   const isPortrait = cameraFraming === 'portrait';
-  const dpr = animationQuality === 'high' ? 2 : animationQuality === 'medium' ? 1.5 : 1;
+  const dpr = typeof window !== 'undefined'
+    ? Math.min(window.devicePixelRatio || 1, animationQuality === 'high' ? 2 : 1.5)
+    : 1;
   const shadows = animationQuality !== 'low';
 
   const initialPos = isPortrait ? CHARACTER_CONFIG.portraitCameraPosition : CHARACTER_CONFIG.cameraPosition;

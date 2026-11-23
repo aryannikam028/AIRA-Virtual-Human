@@ -88,11 +88,11 @@ export const WaveformVisualizer: React.FC<WaveformVisualizerProps> = ({
   }, [state, aesthetic, audioStreamer, r, g, b]);
 
   return (
-    <div className="w-full max-w-lg mx-auto h-16 sm:h-20 px-4 relative flex items-center justify-center">
+    <div className="w-full h-full relative flex items-center justify-center">
       <canvas
         ref={canvasRef}
-        width={600}
-        height={80}
+        width={360}
+        height={60}
         className="w-full h-full opacity-90"
       />
     </div>

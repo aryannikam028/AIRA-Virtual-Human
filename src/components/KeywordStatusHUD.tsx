@@ -70,7 +70,7 @@ export const KeywordStatusHUD: React.FC<KeywordStatusHUDProps> = ({
 
         {/* Keyword Sentinel Popover */}
         {isPopoverOpen && (
-          <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 rounded-2xl bg-neutral-900/95 border border-white/15 shadow-[0_0_40px_rgba(0,0,0,0.85)] backdrop-blur-xl p-4 text-neutral-200 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="absolute right-0 top-full mt-2 w-[calc(100vw-1.5rem)] sm:w-96 max-w-sm rounded-2xl bg-neutral-900/95 border border-white/15 shadow-[0_0_40px_rgba(0,0,0,0.85)] backdrop-blur-xl p-4 text-neutral-200 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
             <div className="flex items-center justify-between pb-3 border-b border-white/10 mb-3">
               <div className="flex items-center gap-2">
                 <div className="p-1.5 rounded-lg bg-pink-500/20 text-pink-400 border border-pink-500/30">

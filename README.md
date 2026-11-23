@@ -10,11 +10,21 @@
 [![VRM](https://img.shields.io/badge/Pixiv_VRM-3.5.5-0096FA)](https://vrm.dev/)
 [![Gemini Live](https://img.shields.io/badge/Google_Gemini-3.8_Live-4285F4?logo=google&logoColor=white)](https://ai.google.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+[![Vercel Deployment](https://img.shields.io/badge/Deployed_on-Vercel-black?logo=vercel&logoColor=white)](https://aira-virtual-human.vercel.app/)
 
 **An embodied, real-time voice-to-voice 3D virtual human companion with a witty, confident, and charismatic persona.**  
 Powered by the **Google Gemini Live API**, **Three.js VRM avatar rendering**, and high-performance **Web Audio PCM streaming**.
 
-[Repository](https://github.com/aryannikam028/AIRA-Virtual-Human) • [Features](#-key-features) • [Architecture](#-architecture) • [Tech Stack](#-technology-stack) • [Getting Started](#-getting-started) • [Deployment](#-deployment) • [Author](#-author)
+---
+
+### 🌐 Live Demo & Official Website
+### 🚀 **[aira-virtual-human.vercel.app](https://aira-virtual-human.vercel.app/)** 🚀
+
+*Hosted and served worldwide on **Vercel**.*
+
+---
+
+[Live Demo](https://aira-virtual-human.vercel.app/) • [Repository](https://github.com/aryannikam028/AIRA-Virtual-Human) • [Features](#-key-features) • [Architecture](#-architecture) • [Tech Stack](#-technology-stack) • [Getting Started](#-getting-started) • [Deployment](#-deployment) • [Author](#-author)
 
 </div>
 
@@ -25,6 +35,9 @@ Powered by the **Google Gemini Live API**, **Three.js VRM avatar rendering**, an
 **AIRA** (Adaptive Intelligent Reactive Assistant) is a next-generation 3D AI companion that bridges the gap between conversational AI and realistic virtual human embodiment. Unlike conventional text-based chatbots, AIRA delivers a continuous, natural, bidirectional audio conversation with near-zero latency, synchronized lip-syncing, life-like procedural animations, and context-aware full-body physical gestures.
 
 AIRA pairs an authentic **VRM 3D anime avatar** with the **Gemini 3.8 Live API**, allowing her to listen, speak, gesture, express emotions, check real-time weather, navigate web applications, and adapt her visual atmosphere dynamically during live conversation.
+
+- **Official Live Website (Vercel):** [https://aira-virtual-human.vercel.app/](https://aira-virtual-human.vercel.app/)
+- **Source Code Repository:** [https://github.com/aryannikam028/AIRA-Virtual-Human](https://github.com/aryannikam028/AIRA-Virtual-Human)
 
 ---
 
@@ -58,7 +71,7 @@ AIRA pairs an authentic **VRM 3D anime avatar** with the **Gemini 3.8 Live API**
 
 ### ⚡ Cyberpunk HUD & Audio Visualization
 - **Aura Orb Visualizer:** Neon particle core pulsating in response to voice amplitude and connection states.
-- **Live Waveform Display:** Oscilloscope canvas reflecting real-time microphone input and AI audio output.
+- **Live Waveform Display:** Oscilloscope canvas reflecting real-time microphone input and AI vocalization harmonics.
 - **Continuous Hotword Recognition:** Built-in Web Speech API detection for hands-free wake and sleep voice commands.
 - **Persona Drawer:** Cyberpunk drawer displaying character personality traits, lore, diagnostics, and keyboard shortcuts.
 
@@ -69,6 +82,7 @@ AIRA pairs an authentic **VRM 3D anime avatar** with the **Gemini 3.8 Live API**
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
 │                          CLIENT (Browser)                              │
+│             Live at: https://aira-virtual-human.vercel.app/            │
 │                                                                        │
 │   User Microphone ───► Web Audio API (16kHz PCM) ───┐                  │
 │                                                     │                  │
@@ -121,6 +135,7 @@ AIRA pairs an authentic **VRM 3D anime avatar** with the **Gemini 3.8 Live API**
 | **WebSockets** | [ws](https://github.com/websockets/ws) | `^8.22.0` | Bidirectional real-time audio and event transport |
 | **TypeScript Exec** | [tsx](https://github.com/privatenumber/tsx) | `^4.21.0` | Real-time TypeScript execution for server |
 | **Bundler Core** | [esbuild](https://esbuild.github.io/) | `^0.28.0` | High-speed JavaScript/TypeScript bundler |
+| **Frontend Hosting**| [Vercel](https://vercel.com/) | Production | Global edge hosting for React single-page application |
 
 ---
 
@@ -264,29 +279,34 @@ npm run build
 
 ## 🌐 Deployment
 
-AIRA is designed for a dual-tier deployment architecture:
-1. **Frontend (Vercel):** Hosts the static React/Three.js single-page application.
-2. **Backend (Render / Railway / Cloud Run):** Hosts the continuous Node.js WebSocket server bridging client audio to Google's Gemini Live API.
+AIRA is architected with a decoupled frontend and backend:
+- **Frontend Hosting (Vercel):** Serves the compiled React, Three.js, and VRM single-page application at global edge locations.
+  - **Official Production Site:** [https://aira-virtual-human.vercel.app/](https://aira-virtual-human.vercel.app/)
+- **Backend WebSocket Service:** Runs the continuous Node.js server bridging client audio streams to Google's Gemini Live API.
 
-### A. Deploy Frontend on Vercel
-1. Import the repository `aryannikam028/AIRA-Virtual-Human` on [Vercel](https://vercel.com/).
-2. Vercel automatically detects the framework preset as **Vite** via `vercel.json`.
-3. In **Project Settings > Environment Variables**, add:
-   - `VITE_WS_URL`: `wss://your-backend-service.onrender.com` (your deployed backend WebSocket URL).
-4. Deploy.
+### A. Frontend on Vercel (Official Live Deployment)
+The frontend is deployed on **Vercel** connected directly to the `main` branch of this repository:
+1. **Framework Preset:** Vite
+2. **Build Command:** `npm run build`
+3. **Output Directory:** `dist`
+4. **SPA Rewrites:** Managed automatically via [`vercel.json`](vercel.json)
+5. **Live URL:** [https://aira-virtual-human.vercel.app/](https://aira-virtual-human.vercel.app/)
 
-### B. Deploy Backend on Render / Railway
-1. Create a new **Web Service** on [Render](https://render.com/) connecting to the repository.
-2. Configure settings:
+To connect the Vercel frontend to a remote backend, set `VITE_WS_URL` in **Vercel Project Settings > Environment Variables** (e.g. `wss://your-backend.onrender.com`).
+
+### B. Backend on Cloud Services (Render / Railway / Cloud Run)
+To host the persistent WebSocket server:
+1. Create a **Web Service** connecting to this GitHub repository.
+2. Settings:
    - **Environment:** `Node`
    - **Build Command:** `npm ci`
-   - **Start Command:** `npm start` (runs `tsx server.ts`)
-3. Under **Environment Variables**, add:
-   - `GEMINI_API_KEY`: Your private Google Gemini API key.
-   - `WEATHER_API_KEY`: (Optional) Your OpenWeather API key.
-   - `PORT`: `10000` (or leave default for auto-assignment).
+   - **Start Command:** `npm start` (executes `tsx server.ts`)
+3. Set environment variables:
+   - `GEMINI_API_KEY`: Your Google Gemini API key.
+   - `WEATHER_API_KEY`: (Optional) OpenWeatherMap API key.
+   - `PORT`: `10000` (or platform default).
    - `NODE_ENV`: `production`
-4. Deploy the service and use its `wss://...` URL for `VITE_WS_URL` on Vercel.
+4. Provide the deployed service's `wss://` URL as `VITE_WS_URL` on Vercel.
 
 ---
 
@@ -302,13 +322,13 @@ AIRA is designed for a dual-tier deployment architecture:
 
 ---
 
-## 👤 Author
+## 👤 Author & Project Links
 
-**Aryan Nikam**
-
-- **GitHub:** [@aryannikam028](https://github.com/aryannikam028)
+- **Developer:** Aryan Nikam
+- **Live Website:** [https://aira-virtual-human.vercel.app/](https://aira-virtual-human.vercel.app/)
+- **GitHub Repository:** [https://github.com/aryannikam028/AIRA-Virtual-Human](https://github.com/aryannikam028/AIRA-Virtual-Human)
+- **GitHub Profile:** [@aryannikam028](https://github.com/aryannikam028)
 - **LinkedIn:** [Aryan Nikam](https://www.linkedin.com/in/aryan-nikam-525029414/)
-- **Repository:** [AIRA-Virtual-Human](https://github.com/aryannikam028/AIRA-Virtual-Human)
 
 ---
 

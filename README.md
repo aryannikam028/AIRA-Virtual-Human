@@ -24,13 +24,13 @@ Powered by the **Google Gemini Live API**, **Three.js VRM avatar rendering**, an
 
 ---
 
-[Live Demo](https://aira-virtual-human.vercel.app/) • [Repository](https://github.com/aryannikam028/AIRA-Virtual-Human) • [Features](#-key-features) • [Architecture](#-architecture) • [Tech Stack](#-technology-stack) • [Getting Started](#-getting-started) • [Deployment](#-deployment) • [Author](#-author)
+[Repository](https://github.com/aryannikam028/AIRA-Virtual-Human) • [Features](#features) • [Architecture](#architecture) • [Tech Stack](#tech-stack) • [Getting Started](#getting-started) • [Deployment](#deployment) • [Author](#author)
 
 </div>
 
 ---
 
-## 🌟 Overview
+## Overview
 
 **AIRA** (Adaptive Intelligent Reactive Assistant) is a next-generation 3D AI companion that bridges the gap between conversational AI and realistic virtual human embodiment. Unlike conventional text-based chatbots, AIRA delivers a continuous, natural, bidirectional audio conversation with near-zero latency, synchronized lip-syncing, life-like procedural animations, and context-aware full-body physical gestures.
 
@@ -41,7 +41,7 @@ AIRA pairs an authentic **VRM 3D anime avatar** with the **Gemini 3.8 Live API**
 
 ---
 
-## ✨ Key Features
+## Features
 
 ### 🎙️ Real-Time Bidirectional Voice (Gemini Live)
 - **Direct 16kHz PCM Audio Streaming:** Bidirectional WebSocket audio pipe between the browser Web Audio API and Google's Gemini 3.8 Live multimodal model.
@@ -77,7 +77,7 @@ AIRA pairs an authentic **VRM 3D anime avatar** with the **Gemini 3.8 Live API**
 
 ---
 
-## 🏛️ Architecture
+## Architecture
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
@@ -116,7 +116,7 @@ AIRA pairs an authentic **VRM 3D anime avatar** with the **Gemini 3.8 Live API**
 
 ---
 
-## 💻 Technology Stack
+## Tech Stack
 
 | Domain | Technology / Library | Version | Purpose |
 | :--- | :--- | :--- | :--- |
@@ -139,7 +139,7 @@ AIRA pairs an authentic **VRM 3D anime avatar** with the **Gemini 3.8 Live API**
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```text
 AIRA-Virtual-Human/
@@ -199,7 +199,7 @@ AIRA-Virtual-Human/
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 - **Node.js:** `v20.x` or higher (LTS recommended)
@@ -264,7 +264,7 @@ npm run build
 
 ---
 
-## 🔒 Environment Variables Reference
+## Environment Variables Reference
 
 | Variable | Environment | Required | Description |
 | :--- | :--- | :---: | :--- |
@@ -277,7 +277,7 @@ npm run build
 
 ---
 
-## 🌐 Deployment
+## Deployment
 
 AIRA is architected with a decoupled frontend and backend:
 - **Frontend Hosting (Vercel):** Serves the compiled React, Three.js, and VRM single-page application at global edge locations.
@@ -310,7 +310,7 @@ To host the persistent WebSocket server:
 
 ---
 
-## 📸 Visual Showcase & Interface
+## Visual Showcase & Interface
 
 | Component | Description |
 | :--- | :--- |
@@ -322,7 +322,7 @@ To host the persistent WebSocket server:
 
 ---
 
-## 👤 Author & Project Links
+## Author
 
 - **Developer:** Aryan Nikam
 - **Live Website:** [https://aira-virtual-human.vercel.app/](https://aira-virtual-human.vercel.app/)
@@ -332,6 +332,6 @@ To host the persistent WebSocket server:
 
 ---
 
-## 📄 License
+## License
 
-This project is licensed under the **Apache License 2.0** — see the [LICENSE](LICENSE) file or source headers for details.
+This project is licensed under the **[Apache License 2.0](https://opensource.org/licenses/Apache-2.0)** — see source headers for details.

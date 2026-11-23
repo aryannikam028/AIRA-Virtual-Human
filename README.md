@@ -17,14 +17,7 @@ Powered by the **Google Gemini Live API**, **Three.js VRM avatar rendering**, an
 
 ---
 
-### 🌐 Live Demo & Official Website
-### 🚀 **[aira-virtual-human.vercel.app](https://aira-virtual-human.vercel.app/)** 🚀
-
-*Hosted and served worldwide on **Vercel**.*
-
----
-
-[Repository](https://github.com/aryannikam028/AIRA-Virtual-Human) • [Features](#features) • [Architecture](#architecture) • [Tech Stack](#tech-stack) • [Getting Started](#getting-started) • [Deployment](#deployment) • [Author](#author)
+[Live Demo](https://aira-virtual-human.vercel.app/) • [Repository](https://github.com/aryannikam028/AIRA-Virtual-Human) • [Features](#features) • [Architecture](#architecture) • [Tech Stack](#tech-stack) • [Getting Started](#getting-started) • [Deployment](#deployment) • [Author](#author) • [License](#license)
 
 </div>
 
